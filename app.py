@@ -272,22 +272,31 @@ def analytics():
 
             # Visit Summary
             total_visits = session.query(CrawlerVisit).filter(CrawlerVisit.timestamp >= since).count()
-            crawler_visits = session.query(CrawlerVisit).filter(CrawlerVisit.is_crawler == True, CrawlerVisit.timestamp >= since).count()
+            crawler_visits = session.query(CrawlerVisit).filter(
+                CrawlerVisit.is_crawler == True, 
+                CrawlerVisit.timestamp >= since
+            ).count()
             human_visits = total_visits - crawler_visits
             crawler_percentage = (crawler_visits / total_visits * 100) if total_visits > 0 else 0
 
             # Device Distribution
+            device_case = case(
+                (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
+                (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
+                (CrawlerVisit.user_agent.like('%Windows%') | 
+                 CrawlerVisit.user_agent.like('%Macintosh%') | 
+                 CrawlerVisit.user_agent.like('%Linux%'), 'Desktop'),
+                else_='Other'
+            ).label('device_type')
+
             devices = session.query(
-                case(
-                    (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
-                    (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
-                    (CrawlerVisit.user_agent.like('%Windows%') | 
-                     CrawlerVisit.user_agent.like('%Macintosh%') | 
-                     CrawlerVisit.user_agent.like('%Linux%'), 'Desktop'),
-                    else_='Other'
-                ).label('device_type'),
+                device_case,
                 func.count(CrawlerVisit.id).label('count')
-            ).filter(CrawlerVisit.timestamp >= since).group_by('device_type').all()
+            ).filter(
+                CrawlerVisit.timestamp >= since
+            ).group_by(
+                device_case
+            ).all()
 
             # Top Crawlers
             top_crawlers = (
@@ -361,101 +370,6 @@ def analytics():
         logger.error(f"Error in analytics route: {str(e)}")
         return str(e), 500
 
-    try:
-        with Session() as session:
-            # Time range
-            days = request.args.get('days', 7, type=int)
-            since = datetime.utcnow() - timedelta(days=days)  # Corrected date arithmetic
-
-            # Visit Summary
-            total_visits = session.query(CrawlerVisit).filter(CrawlerVisit.timestamp >= since).count()
-            crawler_visits = session.query(CrawlerVisit).filter(CrawlerVisit.is_crawler == True, CrawlerVisit.timestamp >= since).count()
-            human_visits = total_visits - crawler_visits
-            crawler_percentage = (crawler_visits / total_visits * 100) if total_visits > 0 else 0
-
-            # Device Distribution
-            devices = session.query(
-                case([
-                    (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
-                    (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
-                    (CrawlerVisit.user_agent.like('%Windows%') | 
-                     CrawlerVisit.user_agent.like('%Macintosh%') | 
-                     CrawlerVisit.user_agent.like('%Linux%'), 'Desktop'),
-                ], else_='Other').label('device_type'),
-                func.count(CrawlerVisit.id).label('count')
-            ).filter(CrawlerVisit.timestamp >= since).group_by('device_type').all()
-
-            # Top Crawlers
-            top_crawlers = (
-                session.query(
-                    CrawlerVisit.crawler_name,
-                    func.count(CrawlerVisit.id).label('visit_count')
-                )
-                .filter(
-                    CrawlerVisit.is_crawler == True,
-                    CrawlerVisit.timestamp >= since
-                )
-                .group_by(
-                    CrawlerVisit.crawler_name
-                )
-                .order_by(
-                    desc('visit_count')
-                )
-                .limit(10)
-                .all()
-            )
-
-            # Most Visited Pages
-            top_pages = (
-                session.query(
-                    CrawlerVisit.path,
-                    func.count(CrawlerVisit.id).label('count')
-                )
-                .filter(
-                    CrawlerVisit.timestamp >= since
-                )
-                .group_by(
-                    CrawlerVisit.path
-                )
-                .order_by(
-                    desc('count')
-                )
-                .limit(10)
-                .all()
-            )
-
-            # Page Metrics
-            page_metrics = (
-                session.query(
-                    PageMetric.path,
-                    func.avg(PageMetric.time_on_page).label('avg_time'),
-                    func.avg(PageMetric.scroll_depth).label('avg_scroll')
-                )
-                .filter(
-                    PageMetric.timestamp >= since
-                )
-                .group_by(
-                    PageMetric.path
-                )
-                .all()
-            )
-
-            stats = {
-                'total_visits': total_visits,
-                'human_visits': human_visits,
-                'crawler_visits': crawler_visits,
-                'crawler_percentage': crawler_percentage,
-                'devices': devices,
-                'top_crawlers': top_crawlers,
-                'top_pages': top_pages,
-                'page_metrics': page_metrics,
-                'days': days
-            }
-
-            return render_template('analytics.html', stats=stats, days=days)
-    except Exception as e:
-        logger.error(f"Error in analytics route: {str(e)}")
-        return str(e), 500
 
 @app.route('/track_time', methods=['POST'])
 def track_time():
