@@ -1,5 +1,3 @@
-# startup.sh
-
 #!/bin/bash
 
 # Install ODBC Driver
@@ -8,11 +6,5 @@ curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/source
 apt-get update
 ACCEPT_EULA=Y apt-get install -y msodbcsql17
 
-# Initialize the database and create tables
-python -c "from app import Base, engine; Base.metadata.create_all(engine)"
-
-# Create sample posts if none exist
-python -c "from app import create_sample_posts; create_sample_posts()"
-
-# Start Gunicorn with eventlet
-gunicorn --worker-class eventlet --config gunicorn.conf.py app:app
+# Start Gunicorn
+gunicorn --config gunicorn.conf.py app:app

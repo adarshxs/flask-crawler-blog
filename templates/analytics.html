@@ -2,20 +2,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Analytics Dashboard - Web Crawler Blog</title>
+    <title>Analytics Dashboard - Web Crawler Test Blog</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .data-table th, .data-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .data-table th {
+            background: #f5f5f5;
+        }
+    </style>
 </head>
-<body class="{{ 'dark-theme' if session.get('theme') == 'dark' else '' }}">
+<body>
     <header>
         <h1>Analytics Dashboard</h1>
         <nav>
-            <ul>
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-                <li><a href="{{ url_for('admin') }}">Admin</a></li>
-            </ul>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('admin') }}">Admin Dashboard</a>
+            <select id="timeRange" onchange="updateTimeRange(this.value)">
+                <option value="1" {% if days==1 %}selected{% endif %}>Last 24 hours</option>
+                <option value="7" {% if days==7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if days==30 %}selected{% endif %}>Last 30 days</option>
+            </select>
         </nav>
-        <button id="toggleTheme">Toggle Theme</button>
     </header>
     <main>
         <div class="stats-grid">
@@ -24,46 +57,18 @@
                 <p>Total Visits: {{ stats.total_visits }}</p>
                 <p>Human Visits: {{ stats.human_visits }}</p>
                 <p>Crawler Visits: {{ stats.crawler_visits }}</p>
-                <p>Average Time on Page: {{ stats.avg_time_on_page }} seconds</p>
-                <p>Average Scroll Depth: {{ stats.avg_scroll_depth }}%</p>
-                <p>Crawler Percentage: {{ "%.2f"|format(stats.crawler_visits/stats.total_visits*100 if stats.total_visits > 0 else 0) }}%</p>
+                <p>Crawler Percentage: {{ "%.2f"|format(stats.crawler_percentage) }}%</p>
             </div>
             
             <div class="stat-card">
                 <h3>Device Distribution</h3>
-                <table class="data-table">
-                    <tr>
-                        <th>Device Type</th>
-                        <th>Count</th>
-                        <th>Percentage</th>
-                    </tr>
-                    {% for device in stats.devices %}
-                    <tr>
-                        <td>{{ device.device_type or 'Unknown' }}</td>
-                        <td>{{ device.count }}</td>
-                        <td>{{ "%.2f"|format(device.count/stats.total_visits*100 if stats.total_visits > 0 else 0) }}%</td>
-                    </tr>
-                    {% endfor %}
-                </table>
+                <canvas id="deviceChart"></canvas>
             </div>
         </div>
 
         <div class="stat-card">
             <h3>Top Crawlers</h3>
-            <table class="data-table">
-                <tr>
-                    <th>Crawler Name</th>
-                    <th>Visit Count</th>
-                    <th>Percentage of Crawler Visits</th>
-                </tr>
-                {% for crawler, count in stats.top_crawlers %}
-                <tr>
-                    <td>{{ crawler or 'Unknown' }}</td>
-                    <td>{{ count }}</td>
-                    <td>{{ "%.2f"|format(count/stats.crawler_visits*100 if stats.crawler_visits > 0 else 0) }}%</td>
-                </tr>
-                {% endfor %}
-            </table>
+            <canvas id="crawlerChart"></canvas>
         </div>
 
         <div class="stat-card">
@@ -85,118 +90,90 @@
         </div>
 
         <div class="stat-card">
-            <h3>Visitor Trends</h3>
-            <canvas id="visitorChart" width="400" height="200"></canvas>
-        </div>
-
-        <div class="stat-card">
-            <h3>Crawler vs Human Visits</h3>
-            <canvas id="crawlerChart" width="400" height="200"></canvas>
-        </div>
-
-        <div class="stat-card">
-            <h3>Bot Confidence Levels</h3>
-            <table class="data-table">
-                <tr>
-                    <th>Path</th>
-                    <th>Average Confidence</th>
-                </tr>
-                {% for path, avg_conf in stats.avg_bot_confidence %}
-                <tr>
-                    <td>{{ path }}</td>
-                    <td>{{ "%.2f" | format(avg_conf) }}%</td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-
-        <div class="stat-card">
-            <h3>Real-Time Visitors</h3>
-            <p>Active Users: <span id="activeUsers">0</span></p>
+            <h3>Page Metrics</h3>
+            <canvas id="metricsChart"></canvas>
         </div>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"
-        integrity="sha512-+Il1HZbXgUfX6/Rp9fnnWm0qC/AZTLOXtsSgc+zpBqkVEsGASnOnid+8sMZgH6C/qGXQleIZDnvY4p3FfETeAQ=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
-        // Theme Toggle
-        $('#toggleTheme').click(function() {
-            $('body').toggleClass('dark-theme');
-            const newTheme = $('body').hasClass('dark-theme') ? 'dark' : 'light';
-            
-            // Save preference via AJAX
-            $.ajax({
-                url: '/api/set_theme',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ theme: newTheme }),
-                success: function() {
-                    console.log('Theme updated.');
-                }
-            });
-        });
+        function updateTimeRange(days) {
+            window.location.href = "{{ url_for('analytics') }}" + "?days=" + days;
+        }
 
-        // Real-Time Visitor Tracking
-        var socket = io();
-
-        socket.on('connect', function() {
-            console.log('Connected to server for real-time updates.');
-        });
-
-        socket.on('update_users', function(data) {
-            $('#activeUsers').text(data.active_users);
-        });
-
-        // Charts with Chart.js
-        const ctx = document.getElementById('visitorChart').getContext('2d');
-        const visitorChart = new Chart(ctx, {
-            type: 'line',
+        // Device Distribution Chart
+        const deviceCtx = document.getElementById('deviceChart').getContext('2d');
+        const deviceLabels = {{ stats.devices | map(attribute='device_type') | list | tojson }};
+        const deviceData = {{ stats.devices | map(attribute='count') | list | tojson }};
+        const deviceChart = new Chart(deviceCtx, {
+            type: 'pie',
             data: {
-                labels: {{ stats.dates | tojson }},
+                labels: deviceLabels,
                 datasets: [{
-                    label: 'Visits',
-                    data: {{ stats.visit_counts | tojson }},
-                    backgroundColor: 'rgba(52, 152, 219, 0.2)',
-                    borderColor: 'rgba(52, 152, 219, 1)',
-                    borderWidth: 1,
-                    fill: true,
+                    data: deviceData,
+                    backgroundColor: [
+                        '#3498db',
+                        '#2ecc71',
+                        '#e74c3c',
+                        '#f1c40f'
+                    ]
                 }]
             },
             options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
+                responsive: true
             }
         });
 
-        const ctx2 = document.getElementById('crawlerChart').getContext('2d');
-        const crawlerChart = new Chart(ctx2, {
-            type: 'pie',
+        // Top Crawlers Chart
+        const crawlerCtx = document.getElementById('crawlerChart').getContext('2d');
+        const crawlerLabels = {{ stats.top_crawlers | map(attribute='crawler_name') | list | tojson }};
+        const crawlerData = {{ stats.top_crawlers | map(attribute='visit_count') | list | tojson }};
+        const crawlerChart = new Chart(crawlerCtx, {
+            type: 'bar',
             data: {
-                labels: ['Human Visits', 'Crawler Visits'],
+                labels: crawlerLabels,
                 datasets: [{
-                    data: [{{ stats.human_visits_count }}, {{ stats.crawler_visits_count }}],
-                    backgroundColor: [
-                        'rgba(46, 204, 113, 0.7)',
-                        'rgba(231, 76, 60, 0.7)'
-                    ],
-                    borderColor: [
-                        'rgba(46, 204, 113, 1)',
-                        'rgba(231, 76, 60, 1)'
-                    ],
-                    borderWidth: 1
+                    label: 'Number of Visits',
+                    data: crawlerData,
+                    backgroundColor: '#9b59b6'
                 }]
             },
             options: {
                 responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
             }
         });
 
-        // JavaScript Enabled Cookie
-        document.cookie = "js_enabled=true; path=/";
+        // Page Metrics Chart
+        const metricsCtx = document.getElementById('metricsChart').getContext('2d');
+        const metricsLabels = {{ stats.page_metrics | map(attribute='path') | list | tojson }};
+        const avgTime = {{ stats.page_metrics | map(attribute='avg_time') | list | tojson }};
+        const avgScroll = {{ stats.page_metrics | map(attribute='avg_scroll') | list | tojson }};
+        const metricsChart = new Chart(metricsCtx, {
+            type: 'bar',
+            data: {
+                labels: metricsLabels,
+                datasets: [
+                    {
+                        label: 'Average Time on Page (s)',
+                        data: avgTime,
+                        backgroundColor: '#e67e22'
+                    },
+                    {
+                        label: 'Average Scroll Depth (%)',
+                        data: avgScroll,
+                        backgroundColor: '#1abc9c'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
     </script>
 </body>
 </html>

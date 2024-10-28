@@ -1,4 +1,4 @@
-# /.github/workflows/azure-deploy.yml
+# .github/workflows/azure-deploy.yml
 name: Deploy to Azure
 on:
   push:

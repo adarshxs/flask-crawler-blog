@@ -1,0 +1,8 @@
+<!-- templates/partials/post_snippet.html -->
+<article>
+    <h2><a href="{{ url_for('post', slug=post.slug) }}">{{ post.title }}</a></h2>
+    <time>{{ post.created_at.strftime('%Y-%m-%d') }}</time>
+    <img src="{{ post.image }}" alt="Post image" style="max-width: 400px;">
+    <p>{{ post.content[:200] }}...</p>
+</article>
+<hr>

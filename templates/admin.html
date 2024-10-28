@@ -5,60 +5,26 @@
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="{{ 'dark-theme' if session.get('theme') == 'dark' else '' }}">
+<body>
     <header>
         <h1>Admin Dashboard</h1>
         <nav>
-            <ul>
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-                <li><a href="{{ url_for('analytics') }}">Analytics</a></li>
-            </ul>
+            <a href="{{ url_for('home') }}">Back to Home</a>
+            <a href="{{ url_for('analytics') }}">Analytics Dashboard</a>
         </nav>
-        <button id="toggleTheme">Toggle Theme</button>
     </header>
     <main>
-        <div class="stat-card">
-            <h3>Visitor Statistics</h3>
-            <p>Total Visits: {{ stats.total_visits }}</p>
-            <p>Crawler Visits: {{ stats.crawler_visits }}</p>
-            <p>Human Visits: {{ stats.human_visits }}</p>
-        </div>
+        <h2>Visitor Statistics</h2>
+        <p>Total Visits: {{ stats.total_visits }}</p>
+        <p>Crawler Visits: {{ stats.crawler_visits }}</p>
+        <p>Human Visits: {{ stats.human_visits }}</p>
         
-        <div class="stat-card">
-            <h3>Top Crawlers</h3>
-            <table class="data-table">
-                <tr>
-                    <th>Crawler Name</th>
-                    <th>Visit Count</th>
-                </tr>
-                {% for crawler, count in stats.top_crawlers %}
-                <tr>
-                    <td>{{ crawler or 'Unknown' }}</td>
-                    <td>{{ count }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
+        <h2>Top Crawlers</h2>
+        <ul>
+            {% for crawler, count in stats.top_crawlers %}
+            <li>{{ crawler or 'Unknown' }}: {{ count }} visits</li>
+            {% endfor %}
+        </ul>
     </main>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        // Theme Toggle
-        $('#toggleTheme').click(function() {
-            $('body').toggleClass('dark-theme');
-            const newTheme = $('body').hasClass('dark-theme') ? 'dark' : 'light';
-            
-            // Save preference via AJAX
-            $.ajax({
-                url: '/api/set_theme',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ theme: newTheme }),
-                success: function() {
-                    console.log('Theme updated.');
-                }
-            });
-        });
-    </script>
 </body>
 </html>

@@ -4,87 +4,60 @@
 <head>
     <title>{{ post.title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body class="{{ 'dark-theme' if session.get('theme') == 'dark' else '' }}">
+<body>
     <header>
         <h1>{{ post.title }}</h1>
         <nav>
-            <ul>
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-                <li><a href="{{ url_for('admin') }}">Admin</a></li>
-                <li><a href="{{ url_for('analytics') }}">Analytics</a></li>
-            </ul>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('admin') }}">Admin Dashboard</a>
+            <a href="{{ url_for('analytics') }}">Analytics Dashboard</a>
         </nav>
-        <button id="toggleTheme">Toggle Theme</button>
     </header>
     <main>
-        <time>{{ post.created_at.strftime('%Y-%m-%d') }}</time>
-        <img src="{{ post.image }}" alt="Image for {{ post.title }}">
         <div class="full-post">
-            {{ post.content }}
+            <time>{{ post.created_at.strftime('%Y-%m-%d') }}</time>
+            <img src="{{ post.image }}" alt="Post image" style="max-width: 800px;">
+            <div>{{ post.content }}</div>
         </div>
         
         <h3>Related Posts:</h3>
-        <div class="related-posts-grid">
+        <ul>
             {% for related in related_posts %}
-            <div class="related-post-card">
-                <a href="{{ url_for('post', slug=related.slug) }}">
-                    <img src="{{ related.image }}" alt="Image for {{ related.title }}">
-                    <h4>{{ related.title }}</h4>
-                </a>
-            </div>
+            <li><a href="{{ url_for('post', slug=related.slug) }}">{{ related.title }}</a></li>
             {% endfor %}
-        </div>
+        </ul>
     </main>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
     <script>
-        // Theme Toggle
-        $('#toggleTheme').click(function() {
-            $('body').toggleClass('dark-theme');
-            const newTheme = $('body').hasClass('dark-theme') ? 'dark' : 'light';
-            
-            // Save preference via AJAX
-            $.ajax({
-                url: '/api/set_theme',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ theme: newTheme }),
-                success: function() {
-                    console.log('Theme updated.');
-                }
-            });
-        });
+        let timeSpent = 0;
+        let scrollDepth = 0;
+        const path = "{{ request.path }}";
 
-        // Time-on-page and Scroll Depth Tracking
-        let startTime = Date.now();
-        let maxScroll = 0;
+        // Increment time every second
+        const timer = setInterval(() => {
+            timeSpent += 1;
+        }, 1000);
 
-        window.addEventListener('beforeunload', function() {
-            let endTime = Date.now();
-            let timeSpent = Math.round((endTime - startTime) / 1000); // in seconds
-            
-            navigator.sendBeacon('/api/log_time', JSON.stringify({
-                path: window.location.pathname,
-                time_on_page: timeSpent
-            }));
-        });
-
-        window.addEventListener('scroll', function() {
-            let scrollTop = window.scrollY;
-            let docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            let scrolled = (scrollTop / docHeight) * 100;
-            if (scrolled > maxScroll) {
-                maxScroll = scrolled;
-                navigator.sendBeacon('/api/log_scroll', JSON.stringify({
-                    path: window.location.pathname,
-                    scroll_depth: Math.round(scrolled)
-                }));
+        // Track scroll depth
+        $(window).on('scroll', function() {
+            let docHeight = $(document).height() - $(window).height();
+            let scrollTop = $(window).scrollTop();
+            let currentScroll = Math.round((scrollTop / docHeight) * 100);
+            if (currentScroll > scrollDepth) {
+                scrollDepth = currentScroll;
             }
         });
 
-        // JavaScript Enabled Cookie
-        document.cookie = "js_enabled=true; path=/";
+        // Send metrics before unloading
+        $(window).on('beforeunload', function() {
+            navigator.sendBeacon("{{ url_for('track_time') }}", JSON.stringify({
+                path: path,
+                time_on_page: timeSpent,
+                scroll_depth: scrollDepth
+            }));
+        });
     </script>
 </body>
 </html>
