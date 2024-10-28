@@ -280,34 +280,26 @@ def analytics():
             human_visits = total_visits - crawler_visits
             crawler_percentage = (crawler_visits / total_visits * 100) if total_visits > 0 else 0
 
-            # Subquery for Device Distribution
+            # Device Distribution
             device_case = case(
-                [
-                    (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
-                    (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
-                    (
-                        CrawlerVisit.user_agent.like('%Windows%') |
-                        CrawlerVisit.user_agent.like('%Macintosh%') |
-                        CrawlerVisit.user_agent.like('%Linux%'),
-                        'Desktop'
-                    )
-                ],
+                (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
+                (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
+                (
+                    CrawlerVisit.user_agent.like('%Windows%') |
+                    CrawlerVisit.user_agent.like('%Macintosh%') |
+                    CrawlerVisit.user_agent.like('%Linux%'),
+                    'Desktop'
+                ),
                 else_='Other'
             ).label('device_type')
 
-            subquery = session.query(
+            devices = session.query(
                 device_case,
-                CrawlerVisit.id
+                func.count(CrawlerVisit.id).label('count')
             ).filter(
                 CrawlerVisit.timestamp >= since
-            ).subquery()
-
-            # Outer query to group by device_type
-            devices = session.query(
-                subquery.c.device_type,
-                func.count(subquery.c.id).label('count')
             ).group_by(
-                subquery.c.device_type
+                device_case  # Group by the CASE expression, not the alias
             ).all()
 
             # Top Crawlers
