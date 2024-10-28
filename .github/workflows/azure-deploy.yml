@@ -34,8 +34,14 @@ jobs:
         AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
         AZURE_SQL_PASSWORD: ${{ secrets.AZURE_SQL_PASSWORD }}
       run: |
-        echo "Using database server: $AZURE_SQL_SERVER"
-        echo "Using database name: $AZURE_SQL_DATABASE"
+        echo "Verifying environment variables:"
+        echo "Server: $AZURE_SQL_SERVER"
+        echo "Database: $AZURE_SQL_DATABASE"
+        echo "User: $AZURE_SQL_USER"
+        if [ -z "$AZURE_SQL_SERVER" ] || [ -z "$AZURE_SQL_DATABASE" ] || [ -z "$AZURE_SQL_USER" ] || [ -z "$AZURE_SQL_PASSWORD" ]; then
+          echo "Error: One or more required environment variables are missing"
+          exit 1
+        fi
         PYTHONPATH=. FLASK_APP=app.py python -m flask init-db
         PYTHONPATH=. FLASK_APP=app.py python -m flask create-sample-posts
         
