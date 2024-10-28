@@ -280,7 +280,7 @@ def analytics():
             human_visits = total_visits - crawler_visits
             crawler_percentage = (crawler_visits / total_visits * 100) if total_visits > 0 else 0
 
-            # Device Distribution
+            # Device Distribution without Subquery
             device_case = case(
                 (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
                 (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
@@ -299,7 +299,7 @@ def analytics():
             ).filter(
                 CrawlerVisit.timestamp >= since
             ).group_by(
-                device_case  # Group by the CASE expression, not the alias
+                device_case  # Group by the CASE expression directly
             ).all()
 
             # Top Crawlers
