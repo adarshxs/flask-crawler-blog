@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} - My Blog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="description" content="{{ post.content[:160] }}">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": "{{ post.title }}",
+      "datePublished": "{{ post.created_at.isoformat() }}",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "{{ url_for('post', slug=post.slug, _external=True) }}"
+      }
+    }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>My Blog</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <article>
+            <h2>{{ post.title }}</h2>
+            <p>Published on: {{ post.created_at.strftime('%B %d, %Y') }}</p>
+            <img src="{{ post.image }}" alt="Random generated image for {{ post.title }}">
+            <div>{{ post.content | safe }}</div>
+        </article>
+        <section>
+            <h3>More Articles</h3>
+            <ul>
+                {% for random_post in random_posts %}
+                    <li><a href="{{ url_for('post', slug=random_post.slug) }}">{{ random_post.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2024 My Blog. All rights reserved.</p>
+    </footer>
+</body>
+</html>

@@ -1,3 +1,4 @@
+# .github/workflows/azure-deploy.yml
 name: Deploy to Azure
 on:
   push:
@@ -20,7 +21,8 @@ jobs:
         source venv/bin/activate
     
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: |
+        pip install -r requirements.txt
         
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2

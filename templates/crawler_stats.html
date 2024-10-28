@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawler Statistics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Crawler Statistics</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('admin') }}">Admin</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <h2>Last 24 Hours</h2>
+        <section>
+            <h3>Visit Summary</h3>
+            <p>Total Visits: {{ stats.total_visits }}</p>
+            <p>Crawler Visits: {{ stats.crawler_visits }}</p>
+            <p>Human Visits: {{ stats.human_visits }}</p>
+        </section>
+        <section>
+            <h3>Top Crawlers</h3>
+            <ol>
+                {% for crawler, count in stats.top_crawlers %}
+                <li>{{ crawler or 'Unknown' }}: {{ count }}</li>
+                {% endfor %}
+            </ol>
+        </section>
+        <section>
+            <h3>Top Paths</h3>
+            <ol>
+                {% for path, count in stats.top_paths %}
+                <li>{{ path }}: {{ count }}</li>
+                {% endfor %}
+            </ol>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2024 Crawler Monitor. All rights reserved.</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Crawler Visits</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Crawler Visits</h1>
+    </header>
+    <main>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User Agent</th>
+                    <th>IP Address</th>
+                    <th>Path</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for visit in visits %}
+                <tr>
+                    <td>{{ visit.timestamp }}</td>
+                    <td>{{ visit.user_agent }}</td>
+                    <td>{{ visit.ip_address }}</td>
+                    <td>{{ visit.path }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+    <footer>
+        <p>&copy; 2024 My Blog. All rights reserved.</p>
+    </footer>
+</body>
+</html>
