@@ -5,6 +5,7 @@ import urllib.parse
 from flask import Flask, render_template, request, jsonify
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, func, desc, case
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta  # Import timedelta
 import random
@@ -268,34 +269,45 @@ def analytics():
         with Session() as session:
             # Time range
             days = request.args.get('days', 7, type=int)
-            since = datetime.utcnow() - timedelta(days=days)  # Corrected date arithmetic
+            since = datetime.utcnow() - timedelta(days=days)
 
             # Visit Summary
             total_visits = session.query(CrawlerVisit).filter(CrawlerVisit.timestamp >= since).count()
             crawler_visits = session.query(CrawlerVisit).filter(
-                CrawlerVisit.is_crawler == True, 
+                CrawlerVisit.is_crawler == True,
                 CrawlerVisit.timestamp >= since
             ).count()
             human_visits = total_visits - crawler_visits
             crawler_percentage = (crawler_visits / total_visits * 100) if total_visits > 0 else 0
 
-            # Device Distribution
+            # Subquery for Device Distribution
             device_case = case(
-                (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
-                (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
-                (CrawlerVisit.user_agent.like('%Windows%') | 
-                 CrawlerVisit.user_agent.like('%Macintosh%') | 
-                 CrawlerVisit.user_agent.like('%Linux%'), 'Desktop'),
+                [
+                    (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
+                    (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
+                    (
+                        CrawlerVisit.user_agent.like('%Windows%') |
+                        CrawlerVisit.user_agent.like('%Macintosh%') |
+                        CrawlerVisit.user_agent.like('%Linux%'),
+                        'Desktop'
+                    )
+                ],
                 else_='Other'
             ).label('device_type')
 
-            devices = session.query(
+            subquery = session.query(
                 device_case,
-                func.count(CrawlerVisit.id).label('count')
+                CrawlerVisit.id
             ).filter(
                 CrawlerVisit.timestamp >= since
+            ).subquery()
+
+            # Outer query to group by device_type
+            devices = session.query(
+                subquery.c.device_type,
+                func.count(subquery.c.id).label('count')
             ).group_by(
-                device_case
+                subquery.c.device_type
             ).all()
 
             # Top Crawlers
