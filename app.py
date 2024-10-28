@@ -72,16 +72,31 @@ connection_string = f"mssql+pyodbc:///?odbc_connect={params}"
 engine = create_engine(connection_string)
 Session = sessionmaker(bind=engine)
 
-def init_db():
-    """Initialize database and create sample posts if needed."""
+# Initialize database and create tables
+try:
+    Base.metadata.create_all(engine)
+    logger.info("Database tables created successfully")
+except Exception as e:
+    logger.error(f"Error creating database tables: {str(e)}")
+
+def generate_random_image():
+    """Generate a random colored image with base64 encoding"""
+    color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    img = Image.new('RGB', (400, 300), color)
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
+
+def create_sample_posts():
+    """Create sample blog posts if none exist"""
     try:
-        Base.metadata.create_all(engine)
         with Session() as session:
             # Check if we have any posts
             post_count = session.query(BlogPost).count()
             if post_count == 0:
-                # Create sample posts
-                sample_posts = [
+                # Sample blog post data
+                posts_data = [
                     {
                         "title": "Understanding Web Crawlers",
                         "content": """Web crawlers, also known as spiders or bots, are automated programs that 
@@ -106,7 +121,7 @@ def init_db():
                     }
                 ]
                 
-                for post_data in sample_posts:
+                for post_data in posts_data:
                     post = BlogPost(
                         title=post_data["title"],
                         content=post_data["content"],
@@ -115,19 +130,9 @@ def init_db():
                     )
                     session.add(post)
                 session.commit()
-        logger.info("Database initialized successfully")
+                logger.info("Sample posts created successfully")
     except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}")
-        raise
-
-def generate_random_image():
-    """Generate a random colored image with base64 encoding"""
-    color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-    img = Image.new('RGB', (400, 300), color)
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    img_str = base64.b64encode(buffer.getvalue()).decode()
-    return f"data:image/png;base64,{img_str}"
+        logger.error(f"Error creating sample posts: {str(e)}")
 
 def log_visit(request, path):
     """Log visitor information"""
@@ -157,14 +162,12 @@ def log_visit(request, path):
     except Exception as e:
         logger.error(f"Error logging visit: {str(e)}")
 
-@app.before_first_request
-def startup():
-    """Initialize the database before first request"""
-    init_db()
-
 @app.route('/')
 def home():
     try:
+        # Create sample posts if none exist
+        create_sample_posts()
+        
         page = request.args.get('page', 1, type=int)
         per_page = 10
         
@@ -240,46 +243,6 @@ def admin():
     except Exception as e:
         logger.error(f"Error in admin route: {str(e)}")
         return str(e), 500
-
-@app.route('/generate', methods=['POST'])
-def generate_post():
-    """Generate a new blog post on demand"""
-    try:
-        titles = [
-            "Advanced SEO Techniques",
-            "Understanding Web Crawlers",
-            "Bot Detection Strategies",
-            "Search Engine Guidelines",
-            "Web Indexing Methods"
-        ]
-        
-        contents = [
-            "This comprehensive guide explores advanced techniques for optimizing your website...",
-            "Web crawlers play a crucial role in how search engines discover and index content...",
-            "Modern websites need sophisticated methods to detect and manage bot traffic...",
-            "Search engines provide specific guidelines for webmasters to follow...",
-            "Web indexing is a complex process that involves multiple steps..."
-        ]
-        
-        title = random.choice(titles)
-        content = random.choice(contents)
-        slug = "-".join(title.lower().split())
-        
-        with Session() as session:
-            post = BlogPost(
-                title=title,
-                content=content,
-                image=generate_random_image(),
-                slug=f"{slug}-{random.randint(1000, 9999)}",
-                generated=True
-            )
-            session.add(post)
-            session.commit()
-            
-        return jsonify({"status": "success", "message": "New post generated"})
-    except Exception as e:
-        logger.error(f"Error generating post: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
