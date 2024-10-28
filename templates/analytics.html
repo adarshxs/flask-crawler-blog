@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics Dashboard - Web Crawler Test Blog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart {
+            margin: 20px 0;
+            height: 300px;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .data-table th, .data-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .data-table th {
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Analytics Dashboard</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <select id="timeRange" onchange="updateTimeRange(this.value)">
+                <option value="1" {% if days==1 %}selected{% endif %}>Last 24 hours</option>
+                <option value="7" {% if days==7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if days==30 %}selected{% endif %}>Last 30 days</option>
+            </select>
+        </nav>
+    </header>
+    <main>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Visit Summary</h3>
+                <p>Total Visits: {{ stats.total_visits }}</p>
+                <p>Human Visits: {{ stats.human_visits }}</p>
+                <p>Crawler Visits: {{ stats.crawler_visits }}</p>
+                <p>Crawler Percentage: {{ "%.2f"|format(stats.crawler_visits/stats.total_visits*100 if stats.total_visits > 0 else 0) }}%</p>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Device Distribution</h3>
+                <table class="data-table">
+                    <tr>
+                        <th>Device Type</th>
+                        <th>Count</th>
+                        <th>Percentage</th>
+                    </tr>
+                    {% for device in stats.devices %}
+                    <tr>
+                        <td>{{ device.device_type or 'Unknown' }}</td>
+                        <td>{{ device.count }}</td>
+                        <td>{{ "%.2f"|format(device.count/stats.total_visits*100 if stats.total_visits > 0 else 0) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <h3>Top Crawlers</h3>
+            <table class="data-table">
+                <tr>
+                    <th>Crawler Name</th>
+                    <th>Visit Count</th>
+                    <th>Percentage of Crawler Visits</th>
+                </tr>
+                {% for crawler, count in stats.top_crawlers %}
+                <tr>
+                    <td>{{ crawler or 'Unknown' }}</td>
+                    <td>{{ count }}</td>
+                    <td>{{ "%.2f"|format(count/stats.crawler_visits*100 if stats.crawler_visits > 0 else 0) }}%</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="stat-card">
+            <h3>Most Visited Pages</h3>
+            <table class="data-table">
+                <tr>
+                    <th>Page URL</th>
+                    <th>Views</th>
+                    <th>Percentage of Total Views</th>
+                </tr>
+                {% for url, count in stats.top_pages %}
+                <tr>
+                    <td>{{ url }}</td>
+                    <td>{{ count }}</td>
+                    <td>{{ "%.2f"|format(count/stats.total_visits*100 if stats.total_visits > 0 else 0) }}%</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </main>
+
+    <script>
+    function updateTimeRange(days) {
+        window.location.href = `{{ url_for('analytics') }}?days=${days}`;
+    }
+    </script>
+</body>
+</html>
