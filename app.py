@@ -1,6 +1,7 @@
 # app.py
 import os
 import logging
+import urllib.parse
 from flask import Flask, render_template, request, Response
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
@@ -24,7 +25,7 @@ server = os.environ.get('AZURE_SQL_SERVER', '')
 database = os.environ.get('AZURE_SQL_DATABASE', '')
 username = os.environ.get('AZURE_SQL_USER', '')
 password = os.environ.get('AZURE_SQL_PASSWORD', '')
-driver = '{ODBC Driver 18 for SQL Server}'  # Note: Changed to version 18
+driver = '{ODBC Driver 18 for SQL Server}'
 
 if not all([server, database, username, password]):
     raise ValueError("Missing database connection parameters. Please check your environment variables.")
@@ -33,6 +34,8 @@ connection_string = f"mssql+pyodbc://{username}:{password}@{server}/{database}?d
 engine = create_engine(connection_string)
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
+
+# Rest of your code remains the same...
 
 # Models
 class BlogPost(Base):
