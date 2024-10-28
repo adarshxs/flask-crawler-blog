@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, jsonify
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, func, desc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, timedelta  # Import timedelta
 import random
 import base64
 import io
@@ -200,7 +200,7 @@ def post(slug):
             # Get related posts
             related_posts = session.query(BlogPost)\
                 .filter(BlogPost.slug != slug)\
-                .order_by(func.random())\
+                .order_by(func.newid())\  # Changed from func.random() to func.newid()
                 .limit(3)\
                 .all()
             
@@ -247,7 +247,7 @@ def analytics():
         with Session() as session:
             # Time range
             days = request.args.get('days', 7, type=int)
-            since = datetime.utcnow() - func.interval('day', days)
+            since = datetime.utcnow() - timedelta(days=days)  # Corrected date arithmetic
             
             # Visit Summary
             total_visits = session.query(CrawlerVisit).filter(CrawlerVisit.timestamp >= since).count()
@@ -256,11 +256,15 @@ def analytics():
             crawler_percentage = (crawler_visits / total_visits * 100) if total_visits > 0 else 0
             
             # Device Distribution
+            # Note: SQL Server doesn't directly support parsing user agents. This is a simplistic approach.
+            # For more accurate device detection, consider storing device types separately.
             devices = session.query(
                 func.case([
-                    (user_agents.parse(CrawlerVisit.user_agent).is_mobile, 'Mobile'),
-                    (user_agents.parse(CrawlerVisit.user_agent).is_tablet, 'Tablet'),
-                    (user_agents.parse(CrawlerVisit.user_agent).is_pc, 'Desktop'),
+                    (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
+                    (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
+                    (CrawlerVisit.user_agent.like('%Windows%') | 
+                     CrawlerVisit.user_agent.like('%Macintosh%') | 
+                     CrawlerVisit.user_agent.like('%Linux%'), 'Desktop'),
                 ], else_='Other').label('device_type'),
                 func.count(CrawlerVisit.id).label('count')
             ).filter(CrawlerVisit.timestamp >= since).group_by('device_type').all()
