@@ -24,12 +24,37 @@ jobs:
         sudo apt-get update
         sudo ACCEPT_EULA=Y DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends msodbcsql17
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -y unixodbc-dev
-        sudo dpkg -l | grep -i odbc
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install flask sqlalchemy pyodbc python-lorem user-agents Pillow gunicorn
+        
+    - name: Test Database Connection
+      env:
+        AZURE_SQL_SERVER: ${{ secrets.AZURE_SQL_SERVER }}
+        AZURE_SQL_DATABASE: ${{ secrets.AZURE_SQL_DATABASE }}
+        AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
+        AZURE_SQL_PASSWORD: ${{ secrets.AZURE_SQL_PASSWORD }}
+      run: |
+        python - <<EOF
+        import pyodbc
+        server = '${{ secrets.AZURE_SQL_SERVER }}'
+        database = '${{ secrets.AZURE_SQL_DATABASE }}'
+        username = '${{ secrets.AZURE_SQL_USER }}'
+        password = '${{ secrets.AZURE_SQL_PASSWORD }}'
+        driver = '{ODBC Driver 17 for SQL Server}'
+        
+        print(f"Testing connection to: {server}")
+        print(f"Database: {database}")
+        print(f"Username: {username}")
+        
+        conn_str = f"DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}"
+        print("Attempting connection...")
+        conn = pyodbc.connect(conn_str)
+        print("Connection successful!")
+        conn.close()
+        EOF
         
     - name: Initialize Database
       env:
@@ -39,10 +64,6 @@ jobs:
         AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
         AZURE_SQL_PASSWORD: ${{ secrets.AZURE_SQL_PASSWORD }}
       run: |
-        echo "Testing SQL connection with environment variables..."
-        echo "Server: $AZURE_SQL_SERVER"
-        echo "Database: $AZURE_SQL_DATABASE"
-        echo "User: $AZURE_SQL_USER"
         python -m flask init-db
         python -m flask create-sample-posts
         
