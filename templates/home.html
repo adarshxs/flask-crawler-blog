@@ -18,4 +18,115 @@
         {% endfor %}
     </div>
 </body>
+</html><!-- templates/home.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Crawler Blog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body class="{{ 'dark-theme' if session.get('theme') == 'dark' else '' }}">
+    <header>
+        <h1>Web Crawler Blog</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                <li><a href="{{ url_for('analytics') }}">Analytics</a></li>
+            </ul>
+        </nav>
+        <button id="toggleTheme">Toggle Theme</button>
+    </header>
+    <div class="posts" id="posts">
+        {% for post in posts %}
+        <article class="post">
+            <h2><a href="{{ url_for('post', slug=post.slug) }}">{{ post.title }}</a></h2>
+            <time>{{ post.created_at.strftime('%Y-%m-%d') }}</time>
+            <img src="{{ post.image }}" alt="Image for {{ post.title }}">
+            <p>{{ post.content[:200] }}...</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% if has_more %}
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Loading more posts...</p>
+    </div>
+    {% endif %}
+    
+    <script>
+        let nextPage = {{ next_page }};
+        let loading = false;
+        let hasMore = {{ 'true' if has_more else 'false' }};
+        
+        function loadMorePosts() {
+            if (loading || !hasMore) return;
+            loading = true;
+            $('#loading').show();
+            
+            $.ajax({
+                url: '/api/posts',
+                data: { page: nextPage },
+                success: function(data) {
+                    if (data.posts.length > 0) {
+                        data.posts.forEach(function(post) {
+                            const postHtml = `
+                                <article class="post">
+                                    <h2><a href="/post/${post.slug}">${post.title}</a></h2>
+                                    <time>${post.created_at}</time>
+                                    <img src="${post.image}" alt="Image for ${post.title}">
+                                    <p>${post.content}</p>
+                                </article>
+                            `;
+                            $('#posts').append(postHtml);
+                        });
+                        hasMore = data.has_more;
+                        nextPage += 1;
+                        if (!hasMore) {
+                            $('#loading').html('<p>No more posts.</p>');
+                        }
+                    } else {
+                        $('#loading').html('<p>No more posts.</p>');
+                        hasMore = false;
+                    }
+                    loading = false;
+                },
+                error: function() {
+                    $('#loading').html('<p>An error occurred while loading posts.</p>');
+                    loading = false;
+                }
+            });
+        }
+        
+        $(window).scroll(function() {
+            if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
+                loadMorePosts();
+            }
+        });
+        
+        // Initial hide loading
+        $('#loading').hide();
+
+        // Theme Toggle
+        $('#toggleTheme').click(function() {
+            $('body').toggleClass('dark-theme');
+            const newTheme = $('body').hasClass('dark-theme') ? 'dark' : 'light';
+            
+            // Save preference via AJAX
+            $.ajax({
+                url: '/api/set_theme',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ theme: newTheme }),
+                success: function() {
+                    console.log('Theme updated.');
+                }
+            });
+        });
+
+        // JavaScript Enabled Cookie
+        document.cookie = "js_enabled=true; path=/";
+    </script>
+</body>
 </html>
