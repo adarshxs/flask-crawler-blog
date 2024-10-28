@@ -3,7 +3,7 @@ import os
 import logging
 import urllib.parse
 from flask import Flask, render_template, request, jsonify
-from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, func, desc
+from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, func, desc, case
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta  # Import timedelta
@@ -159,7 +159,13 @@ def home():
             # Pagination parameters
             page = request.args.get('page', 1, type=int)
             per_page = 5
-            posts = session.query(BlogPost).order_by(BlogPost.created_at.desc()).offset((page-1)*per_page).limit(per_page).all()
+            posts = (
+                session.query(BlogPost)
+                .order_by(BlogPost.created_at.desc())
+                .offset((page-1)*per_page)
+                .limit(per_page)
+                .all()
+            )
             total_posts = session.query(BlogPost).count()
             return render_template('home.html', posts=posts, page=page, per_page=per_page, total_posts=total_posts)
     except Exception as e:
@@ -172,7 +178,13 @@ def load_posts():
         with Session() as session:
             page = request.args.get('page', 1, type=int)
             per_page = 5
-            posts = session.query(BlogPost).order_by(BlogPost.created_at.desc()).offset((page-1)*per_page).limit(per_page).all()
+            posts = (
+                session.query(BlogPost)
+                .order_by(BlogPost.created_at.desc())
+                .offset((page-1)*per_page)
+                .limit(per_page)
+                .all()
+            )
             posts_data = []
             for post in posts:
                 posts_data.append({
@@ -194,28 +206,22 @@ def post(slug):
             post = session.query(BlogPost).filter_by(slug=slug).first()
             if not post:
                 return "Post not found", 404
-            
+
             log_visit(request, f'/post/{slug}')
-            
+
             # Get related posts
-            related_posts = session.query(BlogPost)\
-                .filter(BlogPost.slug != slug)\
-                .order_by(func.newid())\  # Changed from func.random() to func.newid()
-                .limit(3)\
+            related_posts = (
+                session.query(BlogPost)
+                .filter(BlogPost.slug != slug)
+                .order_by(func.newid())  # Changed from func.random() to func.newid()
+                .limit(3)
                 .all()
-            
+            )
+
             return render_template('post.html', post=post, related_posts=related_posts)
     except Exception as e:
         logger.error(f"Error in post route: {str(e)}")
         return str(e), 500
-
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template('404.html'), 404
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    return render_template('500.html'), 500
 
 @app.route('/admin')
 def admin():
@@ -224,26 +230,33 @@ def admin():
             # Get crawler statistics
             total_visits = session.query(CrawlerVisit).count()
             crawler_visits = session.query(CrawlerVisit).filter_by(is_crawler=True).count()
-            
+
             # Get top crawlers
-            top_crawlers = session.query(
-                CrawlerVisit.crawler_name,
-                func.count(CrawlerVisit.id).label('visit_count')
-            ).filter(
-                CrawlerVisit.is_crawler == True
-            ).group_by(
-                CrawlerVisit.crawler_name
-            ).order_by(
-                desc('visit_count')
-            ).limit(10).all()
-            
+            top_crawlers = (
+                session.query(
+                    CrawlerVisit.crawler_name,
+                    func.count(CrawlerVisit.id).label('visit_count')
+                )
+                .filter(
+                    CrawlerVisit.is_crawler == True
+                )
+                .group_by(
+                    CrawlerVisit.crawler_name
+                )
+                .order_by(
+                    desc('visit_count')
+                )
+                .limit(10)
+                .all()
+            )
+
             stats = {
                 'total_visits': total_visits,
                 'crawler_visits': crawler_visits,
                 'human_visits': total_visits - crawler_visits,
                 'top_crawlers': top_crawlers
             }
-            
+
             return render_template('admin.html', stats=stats)
     except Exception as e:
         logger.error(f"Error in admin route: {str(e)}")
@@ -256,18 +269,16 @@ def analytics():
             # Time range
             days = request.args.get('days', 7, type=int)
             since = datetime.utcnow() - timedelta(days=days)  # Corrected date arithmetic
-            
+
             # Visit Summary
             total_visits = session.query(CrawlerVisit).filter(CrawlerVisit.timestamp >= since).count()
             crawler_visits = session.query(CrawlerVisit).filter(CrawlerVisit.is_crawler == True, CrawlerVisit.timestamp >= since).count()
             human_visits = total_visits - crawler_visits
             crawler_percentage = (crawler_visits / total_visits * 100) if total_visits > 0 else 0
-            
+
             # Device Distribution
-            # Note: SQL Server doesn't directly support parsing user agents. This is a simplistic approach.
-            # For more accurate device detection, consider storing device types separately.
             devices = session.query(
-                func.case([
+                case([
                     (CrawlerVisit.user_agent.like('%Mobile%'), 'Mobile'),
                     (CrawlerVisit.user_agent.like('%Tablet%'), 'Tablet'),
                     (CrawlerVisit.user_agent.like('%Windows%') | 
@@ -276,43 +287,62 @@ def analytics():
                 ], else_='Other').label('device_type'),
                 func.count(CrawlerVisit.id).label('count')
             ).filter(CrawlerVisit.timestamp >= since).group_by('device_type').all()
-            
+
             # Top Crawlers
-            top_crawlers = session.query(
-                CrawlerVisit.crawler_name,
-                func.count(CrawlerVisit.id).label('visit_count')
-            ).filter(
-                CrawlerVisit.is_crawler == True,
-                CrawlerVisit.timestamp >= since
-            ).group_by(
-                CrawlerVisit.crawler_name
-            ).order_by(
-                desc('visit_count')
-            ).limit(10).all()
-            
+            top_crawlers = (
+                session.query(
+                    CrawlerVisit.crawler_name,
+                    func.count(CrawlerVisit.id).label('visit_count')
+                )
+                .filter(
+                    CrawlerVisit.is_crawler == True,
+                    CrawlerVisit.timestamp >= since
+                )
+                .group_by(
+                    CrawlerVisit.crawler_name
+                )
+                .order_by(
+                    desc('visit_count')
+                )
+                .limit(10)
+                .all()
+            )
+
             # Most Visited Pages
-            top_pages = session.query(
-                CrawlerVisit.path,
-                func.count(CrawlerVisit.id).label('count')
-            ).filter(
-                CrawlerVisit.timestamp >= since
-            ).group_by(
-                CrawlerVisit.path
-            ).order_by(
-                desc('count')
-            ).limit(10).all()
-            
+            top_pages = (
+                session.query(
+                    CrawlerVisit.path,
+                    func.count(CrawlerVisit.id).label('count')
+                )
+                .filter(
+                    CrawlerVisit.timestamp >= since
+                )
+                .group_by(
+                    CrawlerVisit.path
+                )
+                .order_by(
+                    desc('count')
+                )
+                .limit(10)
+                .all()
+            )
+
             # Page Metrics
-            page_metrics = session.query(
-                PageMetric.path,
-                func.avg(PageMetric.time_on_page).label('avg_time'),
-                func.avg(PageMetric.scroll_depth).label('avg_scroll')
-            ).filter(
-                PageMetric.timestamp >= since
-            ).group_by(
-                PageMetric.path
-            ).all()
-            
+            page_metrics = (
+                session.query(
+                    PageMetric.path,
+                    func.avg(PageMetric.time_on_page).label('avg_time'),
+                    func.avg(PageMetric.scroll_depth).label('avg_scroll')
+                )
+                .filter(
+                    PageMetric.timestamp >= since
+                )
+                .group_by(
+                    PageMetric.path
+                )
+                .all()
+            )
+
             stats = {
                 'total_visits': total_visits,
                 'human_visits': human_visits,
@@ -324,7 +354,7 @@ def analytics():
                 'page_metrics': page_metrics,
                 'days': days
             }
-            
+
             return render_template('analytics.html', stats=stats, days=days)
     except Exception as e:
         logger.error(f"Error in analytics route: {str(e)}")
@@ -338,7 +368,7 @@ def track_time():
         path = data.get('path')
         time_on_page = data.get('time_on_page', 0)
         scroll_depth = data.get('scroll_depth', 0)
-        
+
         with Session() as session:
             metric = PageMetric(
                 ip_address=ip_address,
@@ -348,7 +378,7 @@ def track_time():
             )
             session.add(metric)
             session.commit()
-        
+
         return jsonify({'status': 'success'}), 200
     except Exception as e:
         logger.error(f"Error tracking time: {str(e)}")
