@@ -1,39 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Crawler Visits</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Admin Dashboard</title>
 </head>
 <body>
-    <header>
-        <h1>Crawler Visits</h1>
-    </header>
-    <main>
-        <table>
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>User Agent</th>
-                    <th>IP Address</th>
-                    <th>Path</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for visit in visits %}
-                <tr>
-                    <td>{{ visit.timestamp }}</td>
-                    <td>{{ visit.user_agent }}</td>
-                    <td>{{ visit.ip_address }}</td>
-                    <td>{{ visit.path }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </main>
-    <footer>
-        <p>&copy; 2024 My Blog. All rights reserved.</p>
-    </footer>
+    <h1>Admin Dashboard</h1>
+    <a href="{{ url_for('home') }}">Back to Home</a>
+    
+    <h2>Visitor Statistics</h2>
+    <p>Total Visits: {{ stats.total_visits }}</p>
+    <p>Crawler Visits: {{ stats.crawler_visits }}</p>
+    <p>Human Visits: {{ stats.human_visits }}</p>
+    
+    <h2>Top Crawlers</h2>
+    <ul>
+        {% for crawler, count in stats.top_crawlers %}
+        <li>{{ crawler or 'Unknown' }}: {{ count }} visits</li>
+        {% endfor %}
+    </ul>
 </body>
 </html>

@@ -1,80 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{{ post.title }} - Web Crawler Test Blog</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <meta name="description" content="{{ post.content[:160] }}...">
+    <title>{{ post.title }}</title>
 </head>
 <body>
-    <header>
-        <h1>Web Crawler Test Blog</h1>
-        <nav>
-            <a href="{{ url_for('home') }}">Home</a>
-        </nav>
-    </header>
-    <main>
-        <article class="full-post">
-            <h1>{{ post.title }}</h1>
-            <time datetime="{{ post.created_at }}">
-                {{ post.created_at.strftime('%B %d, %Y') }}
-            </time>
-            <div class="post-meta">
-                Views: {{ post.view_count }}
-            </div>
-            <img src="{{ post.image }}" alt="Featured image for {{ post.title }}">
-            <div class="content">
-                {{ post.content }}
-            </div>
-        </article>
-        <aside class="related-posts">
-            <h3>Related Posts</h3>
-            <div class="related-posts-grid">
-                {% for related in related_posts %}
-                <div class="related-post-card">
-                    <a href="{{ url_for('post', slug=related.slug) }}">
-                        <img src="{{ related.image }}" alt="Related post image">
-                        <h4>{{ related.title }}</h4>
-                    </a>
-                </div>
-                {% endfor %}
-            </div>
-        </aside>
-    </main>
-
-    <script>
-    const sessionId = localStorage.getItem('session_id') || '{{ session_id }}';
-    localStorage.setItem('session_id', sessionId);
-    let startTime = Date.now();
-    let maxScroll = 0;
-
-    function trackActivity(type, data = {}) {
-        fetch('/api/track', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                session_id: sessionId,
-                type: type,
-                ...data
-            })
-        });
-    }
-
-    // Track scroll depth
-    window.addEventListener('scroll', () => {
-        const scrollDepth = Math.floor((window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100);
-        if (scrollDepth > maxScroll) {
-            maxScroll = scrollDepth;
-            trackActivity('scroll', { scroll_depth: scrollDepth });
-        }
-    });
-
-    // Track time spent
-    setInterval(() => {
-        const timeSpent = Math.floor((Date.now() - startTime) / 1000);
-        trackActivity('time', { time_spent: timeSpent });
-    }, 5000);
-    </script>
+    <h1>{{ post.title }}</h1>
+    <a href="{{ url_for('home') }}">Back to Home</a>
+    <time>{{ post.created_at.strftime('%Y-%m-%d') }}</time>
+    <img src="{{ post.image }}" alt="Post image" style="max-width: 800px;">
+    <div>{{ post.content }}</div>
+    
+    <h3>Related Posts:</h3>
+    <ul>
+        {% for related in related_posts %}
+        <li><a href="{{ url_for('post', slug=related.slug) }}">{{ related.title }}</a></li>
+        {% endfor %}
+    </ul>
 </body>
 </html>

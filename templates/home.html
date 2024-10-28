@@ -1,101 +1,21 @@
-<!-- templates/home.html -->
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Web Crawler Test Blog</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <meta name="description" content="A test blog for web crawlers to analyze and index content">
+    <title>Web Crawler Blog</title>
 </head>
 <body>
-    <header>
-        <h1>Web Crawler Test Blog</h1>
-        <nav>
-            <a href="{{ url_for('home') }}">Home</a>
-            <a href="{{ url_for('analytics') }}">Analytics</a>
-        </nav>
-    </header>
-    <main>
-        <div class="posts" id="posts-container">
-            {% for post in posts %}
-            <article class="post-card">
-                <img src="{{ post.image }}" alt="Featured image for {{ post.title }}">
-                <div class="post-content">
-                    <h2><a href="{{ url_for('post', slug=post.slug) }}">{{ post.title }}</a></h2>
-                    <time datetime="{{ post.created_at }}">
-                        {{ post.created_at.strftime('%B %d, %Y') }}
-                    </time>
-                    <div class="post-excerpt">
-                        {{ post.content[:200] }}...
-                    </div>
-                    <div class="post-meta">
-                        Views: {{ post.view_count }}
-                    </div>
-                </div>
-            </article>
-            {% endfor %}
-        </div>
-        <div id="loading" style="display: none;">Loading more posts...</div>
-    </main>
-    <script>
-        // Tracking initialization
-        const sessionId = localStorage.getItem('session_id') || '{{ session_id }}';
-        localStorage.setItem('session_id', sessionId);
-        
-        let currentPage = {{ page }};
-        let loading = false;
-        let startTime = Date.now();
-        
-        // Infinite scroll
-        window.addEventListener('scroll', () => {
-            if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) {
-                if (!loading) {
-                    loading = true;
-                    document.getElementById('loading').style.display = 'block';
-                    
-                    fetch(`/?page=${currentPage + 1}`)
-                        .then(response => response.text())
-                        .then(html => {
-                            const parser = new DOMParser();
-                            const doc = parser.parseFromString(html, 'text/html');
-                            const newPosts = doc.querySelectorAll('.post-card');
-                            
-                            const container = document.getElementById('posts-container');
-                            newPosts.forEach(post => container.appendChild(post));
-                            
-                            currentPage++;
-                            loading = false;
-                            document.getElementById('loading').style.display = 'none';
-                        });
-                }
-            }
-        });
-        
-        // Activity tracking
-        function trackActivity(type, data = {}) {
-            fetch('/api/track', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    session_id: sessionId,
-                    type: type,
-                    ...data
-                })
-            });
-        }
-        
-        // Track scroll depth
-        window.addEventListener('scroll', () => {
-            const scrollDepth = Math.floor((window.scrollY + window.innerHeight) / document.documentElement.scrollHeight * 100);
-            trackActivity('scroll', { scroll_depth: scrollDepth });
-        });
-        
-        // Track time spent
-        setInterval(() => {
-            const timeSpent = Math.floor((Date.now() - startTime) / 1000);
-            trackActivity('time', { time_spent: timeSpent });
-        }, 5000);
-    </script>
+    <h1>Web Crawler Blog</h1>
+    <a href="{{ url_for('admin') }}">Admin Dashboard</a>
+    <div class="posts">
+        {% for post in posts %}
+        <article>
+            <h2><a href="{{ url_for('post', slug=post.slug) }}">{{ post.title }}</a></h2>
+            <time>{{ post.created_at.strftime('%Y-%m-%d') }}</time>
+            <img src="{{ post.image }}" alt="Post image" style="max-width: 400px;">
+            <p>{{ post.content[:200] }}...</p>
+        </article>
+        <hr>
+        {% endfor %}
+    </div>
 </body>
 </html>
