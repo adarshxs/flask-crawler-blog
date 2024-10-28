@@ -21,6 +21,43 @@ logger = logging.getLogger(__name__)
 # Initialize SQLAlchemy
 Base = declarative_base()
 
+# Initialize Flask
+app = Flask(__name__)
+
+# Database connection
+server = os.environ.get('AZURE_SQL_SERVER', '')
+database = os.environ.get('AZURE_SQL_DATABASE', '')
+username = os.environ.get('AZURE_SQL_USER', '')
+password = os.environ.get('AZURE_SQL_PASSWORD', '')
+driver = '{ODBC Driver 17 for SQL Server}'
+
+params = urllib.parse.quote_plus(
+    f"DRIVER={driver};"
+    f"SERVER={server};"
+    f"DATABASE={database};"
+    f"UID={username};"
+    f"PWD={password};"
+    "TrustServerCertificate=yes;"
+)
+
+connection_string = f"mssql+pyodbc:///?odbc_connect={params}"
+engine = create_engine(connection_string)
+Session = sessionmaker(bind=engine)
+
+# First, drop all tables
+try:
+    with engine.connect() as conn:
+        # Drop existing tables if they exist
+        conn.execute("""
+        IF OBJECT_ID('blog_posts', 'U') IS NOT NULL
+            DROP TABLE blog_posts;
+        IF OBJECT_ID('crawler_visits', 'U') IS NOT NULL
+            DROP TABLE crawler_visits;
+        """)
+        logger.info("Dropped existing tables")
+except Exception as e:
+    logger.error(f"Error dropping tables: {str(e)}")
+
 # Models
 class BlogPost(Base):
     __tablename__ = 'blog_posts'
@@ -49,35 +86,12 @@ class CrawlerVisit(Base):
     os_family = Column(String(50))
     time_spent = Column(Integer, default=0)
 
-# Initialize Flask
-app = Flask(__name__)
-
-# Database connection
-server = os.environ.get('AZURE_SQL_SERVER', '')
-database = os.environ.get('AZURE_SQL_DATABASE', '')
-username = os.environ.get('AZURE_SQL_USER', '')
-password = os.environ.get('AZURE_SQL_PASSWORD', '')
-driver = '{ODBC Driver 17 for SQL Server}'
-
-params = urllib.parse.quote_plus(
-    f"DRIVER={driver};"
-    f"SERVER={server};"
-    f"DATABASE={database};"
-    f"UID={username};"
-    f"PWD={password};"
-    "TrustServerCertificate=yes;"
-)
-
-connection_string = f"mssql+pyodbc:///?odbc_connect={params}"
-engine = create_engine(connection_string)
-Session = sessionmaker(bind=engine)
-
-# Initialize database and create tables
+# Create new tables
 try:
     Base.metadata.create_all(engine)
-    logger.info("Database tables created successfully")
+    logger.info("Created new tables with updated schema")
 except Exception as e:
-    logger.error(f"Error creating database tables: {str(e)}")
+    logger.error(f"Error creating tables: {str(e)}")
 
 def generate_random_image():
     """Generate a random colored image with base64 encoding"""
@@ -101,22 +115,19 @@ def create_sample_posts():
                         "title": "Understanding Web Crawlers",
                         "content": """Web crawlers, also known as spiders or bots, are automated programs that 
                         systematically browse the World Wide Web. They play a crucial role in how search engines 
-                        discover and index content across the internet. Understanding how they work is essential 
-                        for any web developer or SEO specialist.""",
+                        discover and index content across the internet.""",
                         "slug": "understanding-web-crawlers"
                     },
                     {
                         "title": "SEO Best Practices 2024",
                         "content": """Search Engine Optimization remains a critical aspect of web development. 
-                        In 2024, key practices include mobile optimization, core web vitals, and semantic HTML. 
-                        This guide explores the latest techniques for improving your website's visibility.""",
+                        In 2024, key practices include mobile optimization, core web vitals, and semantic HTML.""",
                         "slug": "seo-best-practices-2024"
                     },
                     {
                         "title": "Bot Detection Techniques",
                         "content": """Modern websites need sophisticated bot detection methods to differentiate 
-                        between legitimate crawlers and malicious bots. This article explores various techniques 
-                        including behavioral analysis, fingerprinting, and CAPTCHA systems.""",
+                        between legitimate crawlers and malicious bots. This article explores various techniques.""",
                         "slug": "bot-detection-techniques"
                     }
                 ]
@@ -126,7 +137,8 @@ def create_sample_posts():
                         title=post_data["title"],
                         content=post_data["content"],
                         image=generate_random_image(),
-                        slug=post_data["slug"]
+                        slug=post_data["slug"],
+                        view_count=0
                     )
                     session.add(post)
                 session.commit()
@@ -165,11 +177,7 @@ def log_visit(request, path):
 @app.route('/')
 def home():
     try:
-        # Create sample posts if none exist
         create_sample_posts()
-        
-        page = request.args.get('page', 1, type=int)
-        per_page = 10
         
         with Session() as session:
             log_visit(request, '/')
@@ -192,7 +200,7 @@ def post(slug):
             # Increment view count
             post.view_count += 1
             
-            # Get related posts
+            # Get random related posts
             related_posts = session.query(BlogPost)\
                 .filter(BlogPost.slug != slug)\
                 .order_by(func.random())\
