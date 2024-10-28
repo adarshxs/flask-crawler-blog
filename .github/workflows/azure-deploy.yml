@@ -16,11 +16,15 @@ jobs:
         
     - name: Install ODBC Driver
       run: |
-        sudo curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-        sudo curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
         sudo apt-get update
-        sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
-        echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+        sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y unixodbc unixodbc-dev libodbc2 libodbcinst2 unixodbc-common
+        sudo rm -f /etc/odbc.ini
+        curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+        curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+        sudo apt-get update
+        sudo ACCEPT_EULA=Y DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends msodbcsql17
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y unixodbc-dev
+        sudo dpkg -l | grep -i odbc
         
     - name: Install dependencies
       run: |
@@ -35,9 +39,10 @@ jobs:
         AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
         AZURE_SQL_PASSWORD: ${{ secrets.AZURE_SQL_PASSWORD }}
       run: |
-        echo "Testing SQL connection with sqlcmd..."
-        /opt/mssql-tools/bin/sqlcmd -S $AZURE_SQL_SERVER -U $AZURE_SQL_USER -P $AZURE_SQL_PASSWORD -d $AZURE_SQL_DATABASE -Q "SELECT @@VERSION"
-        echo "Initializing database..."
+        echo "Testing SQL connection with environment variables..."
+        echo "Server: $AZURE_SQL_SERVER"
+        echo "Database: $AZURE_SQL_DATABASE"
+        echo "User: $AZURE_SQL_USER"
         python -m flask init-db
         python -m flask create-sample-posts
         
