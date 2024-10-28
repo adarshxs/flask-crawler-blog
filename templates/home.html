@@ -1,0 +1,103 @@
+<!-- templates/home.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crawler Test Blog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Crawler Test Blog</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('admin') }}">Admin</a>
+        </nav>
+    </header>
+    <main>
+        <div class="posts">
+            {% for post in posts %}
+            <article class="post-card">
+                <img src="{{ post.image_url }}" alt="Post image">
+                <div class="post-content">
+                    <h2><a href="{{ url_for('post', post_id=post.id) }}">{{ post.title }}</a></h2>
+                    <time>{{ post.created_date.split('T')[0] }}</time>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </main>
+</body>
+</html>
+
+<!-- templates/post.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ post.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Crawler Test Blog</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+        </nav>
+    </header>
+    <main>
+        <article class="full-post">
+            <h1>{{ post.title }}</h1>
+            <time>{{ post.created_date.split('T')[0] }}</time>
+            <img src="{{ post.image_url }}" alt="Post image">
+            <div class="content">
+                {{ post.content }}
+            </div>
+        </article>
+        <aside class="related-posts">
+            <h3>Related Posts</h3>
+            <ul>
+                {% for related in related_posts %}
+                <li><a href="{{ url_for('post', post_id=related.id) }}">{{ related.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </aside>
+    </main>
+</body>
+</html>
+
+<!-- templates/admin.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Crawler Stats</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Admin Dashboard</h1>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+        </nav>
+    </header>
+    <main>
+        <h2>Crawler Statistics</h2>
+        <table class="crawler-stats">
+            <thead>
+                <tr>
+                    <th>User Agent</th>
+                    <th>Visit Count</th>
+                    <th>Last Visit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_agent, stats in crawler_stats.items() %}
+                <tr>
+                    <td>{{ user_agent }}</td>
+                    <td>{{ stats.visit_count }}</td>
+                    <td>{{ stats.last_visit.split('T')[0] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>

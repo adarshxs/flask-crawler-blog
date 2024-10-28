@@ -1,0 +1,100 @@
+/* static/style.css */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+nav {
+    margin-top: 1rem;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    margin: 0 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    background-color: #444;
+}
+
+nav a:hover {
+    background-color: #555;
+}
+
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.posts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.post-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.post-card:hover {
+    transform: translateY(-5px);
+}
+
+.post-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.post-content {
+    padding: 1rem;
+}
+
+.post-content h2 {
+    margin: 0 0 0.5rem 0;
+}
+
+.post-content time {
+    color: #666;
+}
+
+.full-post {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.full-post img {
+    width: 100%;
+    height: auto;
+    margin: 1rem 0;
+}
+
+.crawler-stats {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2rem;
+}
+
+.crawler-stats th,
+.crawler-stats td {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.crawler-stats th {
+    background-color: #f5f5f5;
+}
