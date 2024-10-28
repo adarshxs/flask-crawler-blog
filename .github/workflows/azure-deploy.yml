@@ -1,4 +1,3 @@
-# .github/workflows/azure-deploy.yml
 name: Deploy to Azure
 on:
   push:
@@ -29,3 +28,14 @@ jobs:
       with:
         app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        
+    - name: Initialize Database
+      env:
+        AZURE_SQL_SERVER: ${{ secrets.AZURE_SQL_SERVER }}
+        AZURE_SQL_DATABASE: ${{ secrets.AZURE_SQL_DATABASE }}
+        AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
+        AZURE_SQL_PASSWORD: ${{ secrets.AZURE_SQL_PASSWORD }}
+      run: |
+        source venv/bin/activate
+        python -m flask init-db
+        python -m flask create-sample-posts
