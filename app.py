@@ -21,16 +21,27 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Database connection
+# app.py (update the connection string part)
+
 server = os.environ.get('AZURE_SQL_SERVER', '')
 database = os.environ.get('AZURE_SQL_DATABASE', '')
 username = os.environ.get('AZURE_SQL_USER', '')
 password = os.environ.get('AZURE_SQL_PASSWORD', '')
-driver = '{ODBC Driver 18 for SQL Server}'
+driver = '{ODBC Driver 17 for SQL Server}'  # Changed back to 17
 
 if not all([server, database, username, password]):
     raise ValueError("Missing database connection parameters. Please check your environment variables.")
 
-connection_string = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={urllib.parse.quote_plus(driver)}&TrustServerCertificate=yes"
+params = urllib.parse.quote_plus(
+    f"DRIVER={driver};"
+    f"SERVER={server};"
+    f"DATABASE={database};"
+    f"UID={username};"
+    f"PWD={password};"
+    "TrustServerCertificate=yes;"
+)
+
+connection_string = f"mssql+pyodbc:///?odbc_connect={params}"
 engine = create_engine(connection_string)
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
