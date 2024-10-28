@@ -6,5 +6,5 @@ curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/source
 apt-get update
 ACCEPT_EULA=Y apt-get install -y msodbcsql17
 
-# Start Gunicorn
+# Start Gunicorn with config
 gunicorn --config gunicorn.conf.py app:app
